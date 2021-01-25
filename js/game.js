@@ -8,7 +8,6 @@ let titleScene = new Phaser.Class({
             Phaser.Scene.call(this, { key: 'titleScene' });
         },
 
-
     preload: function () {
         this.load.image('bg', 'images/titleScreen.png');
         this.load.image('title', 'images/title.png');
@@ -27,9 +26,6 @@ let titleScene = new Phaser.Class({
         this.input.once('pointerdown', function () {
             this.cameras.main.fade(250);
             this.cameras.main.on('camerafadeoutcomplete', function (camera, effect) {
-                game.scene.start('gameScene');
-                console.log('Loading The Game!');
-                console.log('From titleScene to gameScene');
                 this.scene.start('gameScene');
             }, this);
 
@@ -39,8 +35,6 @@ let titleScene = new Phaser.Class({
     update: function (time, delta) {
         this.decor.rotation += 0.005;
     }
-
-
 });
 
 let gameScene = new Phaser.Class({
@@ -52,15 +46,14 @@ let gameScene = new Phaser.Class({
         function gameScene() {
             Phaser.Scene.call(this, { key: 'gameScene' });
 
-
-
-            // Our player variables
+            // Player variables
             this.alive = true;
-            this.speed = 250;
-            this.direction = 'LEFT';
-            this.playerOnPlatform = false;
+            this.speed = 350;
+            this.jumpHeight = 450;
+            this.direction = 'STANDING';
+            this.inAir = false;
+            this.jumpReleased = true;
         },
-
 
     preload: function () {
         this.load.image('bg', 'images/titleScreen.png');
@@ -69,84 +62,110 @@ let gameScene = new Phaser.Class({
         this.load.image('platform', 'images/sprites/platform.png');
     },
 
-    create: function () {
-
-
-
-
-        this.add.image(400, 300, 'bg');
-        this.player = this.physics.add.sprite(400, 300, 'player');
-        this.add.text(320, 150, `Wander The Shadows`);
-
-        this.platforms = this.add.group({
+    platformCreator: function () {
+        return {
             key: 'platform',
-            repeat: 5,
+            repeat: 10, // Number of platforms
             setXY: {
-                x: 90,
+                x: -1000, // Starting Point
                 y: 500,
-                stepX: 80,
+                stepX: 850, // Offset direction
                 stepY: 0
+            },
+            setScale: {
+                x: 5,
+                y: 1
             }
-        });
+        };
+    },
+
+    create: function () {
+        // Player Create
+        this.player = this.physics.add.sprite(0, 450, 'player');
+        this.player.setBounce(0.05);
+        this.player.setPipeline('Light2D');
+
+        // Light
+        this.playerLight = this.lights.addLight(0, 0, 250).setIntensity(2);
+        this.lights.enable().setAmbientColor(0x000000);
+
+        // Platforms
+        this.platforms = this.physics.add.staticGroup(this.platformCreator());
+
+        Phaser.Actions.Call(this.platforms.getChildren(), platform => {
+            platform.setPipeline('Light2D');
+            platform.refreshBody();
+        }, this);
+
+        this.physics.add.collider(this.player, this.platforms);
 
         //  Create our keyboard controls
         cursors = this.input.keyboard.createCursorKeys();
+        aKeyObj = this.input.keyboard.addKey('A');
+        dKeyObj = this.input.keyboard.addKey('D');
+        wKeyObj = this.input.keyboard.addKey('W');
+        sKeyObj = this.input.keyboard.addKey('S');
+        spaceKeyObj = this.input.keyboard.addKey('SPACE');
 
-
-
-
+        // Camera
+        //this.cameras.main.setBounds(0, 0, 720 * 2, 176);
+        this.cameras.main.startFollow(this.player, true);
     },
 
     update: function (time, delta) {
         // Set player collision
-        let playerRect = this.player.getBounds();
+        // let playerRect = this.player.getBounds();
 
+        // Handle player movement
+        this.playerHandler();
 
-        if (!this.playerOnPlatform)
-            this.player.body.setVelocityY(500);
-        else
-            this.player.body.setVelocityY(0);
-
-
-        // Movement
-        if (cursors.left.isDown) {
-            console.log('Hello from the Left Key!');
-            let direction = 'LEFT';
-            this.move(direction);
+        if (this.player.y > 850) {
+            this.gameOver();
         }
-        if (cursors.right.isDown) {
-            console.log('Hello from the Right Key!');
-            let direction = 'RIGHT';
-            this.move(direction);
+
+    },
+
+    playerHandler: function () {
+        // Left
+        if ((cursors.left.isDown || aKeyObj.isDown) && this.player.body.touching.down) {
+            this.direction = 'LEFT';
         }
-        if (cursors.up.isDown && this.playerOnPlatform) {
+
+        // Right
+        if ((cursors.right.isDown || dKeyObj.isDown) && this.player.body.touching.down) {
+            this.direction = 'RIGHT';
+        }
+
+        // Jump
+        if (this.jumpReleased && (cursors.up.isDown || spaceKeyObj.isDown || wKeyObj.isDown) && this.player.body.touching.down) {
             this.jump();
-        } if (cursors.down.isDown) {
-            console.log('Hello from the Down Key!');
-        } if (cursors.right.isUp && cursors.left.isUp) {
-            this.player.setVelocityX(0);
+            this.jumpReleased = false;
+        }
+        if (cursors.up.isUp && spaceKeyObj.isUp && wKeyObj.isUp && this.player.body.touching.down)
+            this.jumpReleased = true;
+
+        // In Air Handler
+        if (this.player.body.touching.down) {
+            this.inAir = false;
+        } else {
+            this.inAir = true;
         }
 
-        Phaser.Actions.Call(this.platforms.getChildren(), platform => {
-            // check enemy overlap
-            let platformRect = platform.getBounds();
+        // Crouch
+        if (cursors.down.isDown || sKeyObj.isDown) {
+            this.direction = "CROUCH";
+        }
 
-            if (Phaser.Geom.Intersects.RectangleToRectangle(playerRect, platformRect)) {
-                this.playerOnPlatform = true;
+        // Standing in place or jumping in place
+        if (((cursors.right.isUp && cursors.left.isUp) && (aKeyObj.isUp && dKeyObj.isUp)) && this.player.body.touching.down || ((cursors.right.isDown && cursors.left.isDown) || (aKeyObj.isDown && dKeyObj.isDown) && this.player.body.touching.down)) {
+            this.direction = "STANDING";
+        }
 
-                console.log(this.playerOnPlatform);
-            }
-            if (!Phaser.Geom.Intersects.RectangleToRectangle(playerRect, platformRect)) {
-                this.playerOnPlatform = false;
-                console.log(this.playerOnPlatform);
-            }
+        this.move(this.direction);
 
-        }, this);
-
-        /* End Game
-        console.log('From gameScene to endScene');
-        this.scene.start('endScene');
-        */
+        // Set Light Position
+        this.playerLight.x = this.player.x;
+        this.playerLight.y = this.player.y;
     },
 
     move: function (direction) {
@@ -158,13 +177,23 @@ let gameScene = new Phaser.Class({
             this.player.setVelocityX(this.speed);
             this.player.flipX = false;
         }
+        else if (direction === 'STANDING') {
+            this.player.setVelocityX(0);
+        }
     },
 
     jump: function () {
-        this.playerOnPlatform = false;
-        this.player.body.setVelocityY(-2000);
-    }
+        this.player.body.setVelocityY(-this.jumpHeight);
+    },
 
+    gameOver: function () {
+        this.cameras.main.fade(750);
+        this.cameras.main.on('camerafadeoutcomplete', function (camera, effect) {
+            this.playerLight.setIntensity(0);
+            this.scene.stop();
+            this.scene.start('endScene');
+        }, this);
+    }
 });
 
 let endScene = new Phaser.Class({
@@ -178,10 +207,26 @@ let endScene = new Phaser.Class({
         },
 
     preload: function () {
+        this.load.image('bg', 'images/titleScreen.png');
     },
 
     create: function () {
+        this.add.text(360, 150, `GAME OVER`);
+        this.add.text(320, 500, `Click to try again`);
+
+        this.input.once('pointerdown', function () {
+            this.cameras.main.fade(250);
+            this.cameras.main.on('camerafadeoutcomplete', function (camera, effect) {
+                this.scene.start('gameScene');
+            }, this);
+
+        }, this);
+
+    },
+    update: function (time, delta) {
+
     }
+
 
 });
 
@@ -195,9 +240,9 @@ let config = {
     physics: {
         default: 'arcade',
         arcade: {
-            debug: true,
+            debug: false,
             gravity: {
-
+                y: 700
             },
         },
     },
