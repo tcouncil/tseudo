@@ -129,15 +129,11 @@ let gameScene = new Phaser.Class({
         // Left
         if ((cursors.left.isDown || aKeyObj.isDown) && this.player.body.touching.down) {
             this.direction = 'LEFT';
-        }else{
-            this.direction = 'STANDING';
         }
 
         // Right
         if ((cursors.right.isDown || dKeyObj.isDown) && this.player.body.touching.down) {
             this.direction = 'RIGHT';
-        }else{
-            this.direction = 'STANDING';
         }
 
         // Jump
