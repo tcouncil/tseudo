@@ -46,16 +46,7 @@ let gameScene = new Phaser.Class({
         function gameScene() {
             Phaser.Scene.call(this, { key: 'gameScene' });
 
-            // Player variables
-            this.alive = true;
-            this.speed = 350;
-            this.jumpHeight = 450;
-            this.direction = 'STANDING';
-            this.inAir = false;
-            this.jumpReleased = true;
-            this.score = 0;
-            this.level = 1;
-            this.insight = 0;
+
         },
 
     preload: function () {
@@ -66,12 +57,76 @@ let gameScene = new Phaser.Class({
         this.load.image('orb', 'images/sprites/insight.png');
     },
 
-    platformCreator: function () {
+    generateLevel: function () {
+        const getRandomInt = (max) => {
+            return Math.floor(Math.random() * Math.floor(max));
+        }
+
+        // Generate Random Numbers
+        const numberOfPlatforms = getRandomInt(15) + 10;
+        const randomOne = getRandomInt(500) + getRandomInt(150);
+        const randomTwo = getRandomInt(150) + getRandomInt(75);
+        const randomThree = getRandomInt(500) + getRandomInt(150);
+        const randomFour = getRandomInt(200) + getRandomInt(75);
+
+        // Orbs
+        this.orbs = this.physics.add.staticGroup(this.orbsCreator((numberOfPlatforms), randomOne, randomTwo));
+        this.orbsMed = this.physics.add.staticGroup(this.orbsCreator((numberOfPlatforms), randomTwo, randomThree, 0.6));
+        this.orbsLarge = this.physics.add.staticGroup(this.orbsCreator((numberOfPlatforms), randomThree, randomFour, 0.75));
+
+        this.platforms = this.physics.add.staticGroup(this.platformCreator());
+        this.secondPlatforms = this.physics.add.staticGroup(this.platformHighCreator(numberOfPlatforms, randomOne, randomTwo));
+        this.thirdPlatforms = this.physics.add.staticGroup(this.platformHighCreator(numberOfPlatforms, randomTwo, randomThree));
+        this.fourthPlatforms = this.physics.add.staticGroup(this.platformHighCreator(numberOfPlatforms, randomThree, randomFour));
+
+        this.winningOrb = this.physics.add.staticGroup(this.winningOrbsCreator(1, (randomThree * numberOfPlatforms), (randomFour * numberOfPlatforms), 1.5));
+
+        Phaser.Actions.Call(this.platforms.getChildren(), platform => {
+            platform.setPipeline('Light2D');
+            platform.refreshBody();
+        }, this);
+
+        Phaser.Actions.Call(this.secondPlatforms.getChildren(), platform => {
+            platform.setPipeline('Light2D');
+        }, this);
+
+        Phaser.Actions.Call(this.thirdPlatforms.getChildren(), platform => {
+            platform.setPipeline('Light2D');
+        }, this);
+
+        Phaser.Actions.Call(this.fourthPlatforms.getChildren(), platform => {
+            platform.setPipeline('Light2D');
+        }, this);
+
+        Phaser.Actions.Call(this.orbs.getChildren(), orb => {
+            orb.setPipeline('Light2D');
+            orb.refreshBody();
+        }, this);
+
+        Phaser.Actions.Call(this.orbsMed.getChildren(), orb => {
+            orb.setPipeline('Light2D');
+            orb.refreshBody();
+        }, this);
+
+
+        Phaser.Actions.Call(this.orbsLarge.getChildren(), orb => {
+            orb.setPipeline('Light2D');
+            orb.refreshBody();
+        }, this);
+
+        Phaser.Actions.Call(this.winningOrb.getChildren(), orb => {
+            orb.setPipeline('Light2D');
+            orb.refreshBody();
+        }, this);
+
+    },
+
+    platformCreator: function (numberOfPlatforms) {
         return {
             key: 'platform',
-            repeat: 10, // Number of platforms
+            repeat: numberOfPlatforms, // Number of platforms
             setXY: {
-                x: -1000, // Starting Point
+                x: 0, // Starting Point
                 y: 500,
                 stepX: 850, // Offset direction
                 stepY: 0
@@ -83,67 +138,90 @@ let gameScene = new Phaser.Class({
         };
     },
 
-    orbsCreator: function () {
+    platformHighCreator: function (numberOfPlatforms, randomOne, randomTwo) {
+        return {
+            key: 'platform',
+            repeat: numberOfPlatforms, // Number of platforms
+            setXY: {
+                x: 500, // Starting Point
+                y: 500,
+                stepX: randomOne, // Offset direction
+                stepY: -randomTwo
+            },
+            setScale: {
+                x: 1,
+                y: 1
+            }
+        };
+    },
+
+    orbsCreator: function (numberOfOrbs, randomOne, randomTwo, size = 0.5) {
         return {
             key: 'orb',
-            repeat: 100, // Number of platforms
+            repeat: numberOfOrbs, // Number of platforms
             setXY: {
-                x: -1000, // Starting Point
-                y: 436,
-                stepX: 80, // Offset direction
+                x: 500, // Starting Point
+                y: 450,
+                stepX: randomOne, // Offset direction
+                stepY: -randomTwo
+            },
+            setScale: {
+                x: size,
+                y: size
+            }
+        };
+    },
+
+    winningOrbsCreator: function (numberOfOrbs = 1, x, y, size = 0.5) {
+        console.log(x, y)
+        return {
+            key: 'orb',
+            repeat: numberOfOrbs, // Number of platforms
+            setXY: {
+                x: x, // Starting Point
+                y: -y,
+                stepX: 0, // Offset direction
                 stepY: 0
             },
             setScale: {
-                x: 0.5,
-                y: 0.5
+                x: size,
+                y: size
             }
         };
     },
 
 
     create: function () {
-
-
-
         // Player Create
         this.player = this.physics.add.sprite(0, 450, 'player');
         this.player.setBounce(0.05);
         this.player.setPipeline('Light2D');
 
+        // Player variables
+        this.alive = true;
+        this.speed = 350;
+        this.jumpHeight = 550;
+        this.direction = 'STANDING';
+        this.inAir = false;
+        this.jumpReleased = true;
+        this.score = 0;
+        this.level = 1;
+        this.insight = 0;
+        timeNumber = 0;
+
         // Light
         this.playerLight = this.lights.addLight(0, 0, 250).setIntensity(2);
         this.lights.enable().setAmbientColor(0x000000);
 
-        // Platforms
-        this.platforms = this.physics.add.staticGroup(this.platformCreator());
-
-        Phaser.Actions.Call(this.platforms.getChildren(), platform => {
-            platform.setPipeline('Light2D');
-            platform.refreshBody();
-        }, this);
+        // Generate Level
+        this.generateLevel();
 
         this.physics.add.collider(this.player, this.platforms);
+        this.physics.add.collider(this.player, this.secondPlatforms);
+        this.physics.add.collider(this.player, this.thirdPlatforms);
+        this.physics.add.collider(this.player, this.fourthPlatforms);
 
-        this.orbs = this.physics.add.staticGroup(this.orbsCreator());
-        Phaser.Actions.Call(this.orbs.getChildren(), orb => {
-            orb.setPipeline('Light2D');
-            orb.refreshBody();
-        }, this);
-
-
-        //  Using the Scene Data Plugin we can store data on a Scene level
-        this.data.set('level', this.level);
-        this.data.set('insight', this.insight);
-        this.data.set('score', this.score);
-
-        text = this.add.text(100, 100, '', { font: '12px Courier', fill: '#00ff00' });
-
-        text.setText([
-            'Level: ' + this.data.get('level'),
-            'Insight: ' + this.data.get('insight'),
-            'Score: ' + this.data.get('score')
-        ]).setScrollFactor(0);
-
+        text = this.add.text(32, 32, '', { font: '12px Courier', fill: '#00ff00' });
 
         //  Create our keyboard controls
         cursors = this.input.keyboard.createCursorKeys();
@@ -154,8 +232,9 @@ let gameScene = new Phaser.Class({
         spaceKeyObj = this.input.keyboard.addKey('SPACE');
 
         // Camera
-        //this.cameras.main.setBounds(0, 0, 720 * 2, 176);
         this.cameras.main.startFollow(this.player, true);
+
+        this.time.addEvent({ delay: 1000, callback: this.setTimer, loop: true })
     },
 
     update: function (time, delta) {
@@ -176,6 +255,38 @@ let gameScene = new Phaser.Class({
 
         }, this);
 
+        Phaser.Actions.Call(this.orbsMed.getChildren(), orb => {
+
+            let orbRect = orb.getBounds();
+            if (Phaser.Geom.Intersects.RectangleToRectangle(playerRect, orbRect)) {
+                this.insight += 5;
+                this.score += 25;
+                orb.destroy();
+            }
+
+        }, this);
+
+        Phaser.Actions.Call(this.orbsLarge.getChildren(), orb => {
+
+            let orbRect = orb.getBounds();
+            if (Phaser.Geom.Intersects.RectangleToRectangle(playerRect, orbRect)) {
+                this.insight += 10;
+                this.score += 50;
+                orb.destroy();
+            }
+
+        }, this);
+
+        Phaser.Actions.Call(this.winningOrb.getChildren(), orb => {
+
+            let orbRect = orb.getBounds();
+            if (Phaser.Geom.Intersects.RectangleToRectangle(playerRect, orbRect)) {
+                orb.destroy();
+                this.endGame();
+            }
+
+        }, this);
+
 
         if (this.player.y > 850) {
             this.gameOver();
@@ -185,12 +296,12 @@ let gameScene = new Phaser.Class({
 
     playerHandler: function () {
         // Left
-        if ((cursors.left.isDown || aKeyObj.isDown) && this.player.body.touching.down) {
+        if (cursors.left.isDown || aKeyObj.isDown) {
             this.direction = 'LEFT';
         }
 
         // Right
-        if ((cursors.right.isDown || dKeyObj.isDown) && this.player.body.touching.down) {
+        if (cursors.right.isDown || dKeyObj.isDown) {
             this.direction = 'RIGHT';
         }
 
@@ -215,7 +326,7 @@ let gameScene = new Phaser.Class({
         }
 
         // Standing in place or jumping in place
-        if (((cursors.right.isUp && cursors.left.isUp) && (aKeyObj.isUp && dKeyObj.isUp)) && this.player.body.touching.down || ((cursors.right.isDown && cursors.left.isDown) || (aKeyObj.isDown && dKeyObj.isDown) && this.player.body.touching.down)) {
+        if (((cursors.right.isUp && cursors.left.isUp) && (aKeyObj.isUp && dKeyObj.isUp)) || ((cursors.right.isDown && cursors.left.isDown) || (aKeyObj.isDown && dKeyObj.isDown))) {
             this.direction = "STANDING";
         }
 
@@ -234,18 +345,27 @@ let gameScene = new Phaser.Class({
         this.data.set('level', this.level);
         this.data.set('insight', this.insight);
         this.data.set('score', this.score);
+        this.data.set('time', timeNumber);
+
 
         text.setText([
             'Level: ' + this.data.get('level'),
             'Insight: ' + this.data.get('insight'),
-            'Score: ' + this.data.get('score')
+            'Score: ' + this.data.get('score'),
+            'Timer: ' + this.data.get('time')
         ]).setScrollFactor(0);
 
-        this.cameras.main.zoom = 1 - (this.level * 0.01);
-        this.level = Math.ceil(this.insight / 50 );
-        this.playerLight.setRadius(200+(50*this.level)).setIntensity(1+this.level);
-        this.speed = 340 + (this.level * 10);
+        if (this.alive) {
+            this.level = Math.ceil(this.insight / 50);
+            this.playerLight.setRadius(200 + (50 * this.level)).setIntensity(1 + this.level);
+            this.speed = 340 + (this.level * 10);
+        }
 
+    },
+
+    setTimer: function () {
+        timeNumber++;
+        console.log(`Timer: ${timeNumber}`);
     },
 
     move: function (direction) {
@@ -268,12 +388,25 @@ let gameScene = new Phaser.Class({
 
     gameOver: function () {
         text.setText("");
+        this.alive = false;
         this.cameras.main.fade(750);
         this.cameras.main.on('camerafadeoutcomplete', function (camera, effect) {
             this.playerLight.setIntensity(0);
 
             this.scene.stop();
             this.scene.start('endScene');
+        }, this);
+    },
+
+    endGame: function () {
+        text.setText("");
+        this.alive = false;
+        this.cameras.main.fade(750);
+        this.cameras.main.on('camerafadeoutcomplete', function (camera, effect) {
+            this.playerLight.setIntensity(0);
+
+            this.scene.stop();
+            this.scene.start('winScene');
         }, this);
     }
 });
@@ -311,13 +444,46 @@ let endScene = new Phaser.Class({
 
 });
 
+let winScene = new Phaser.Class({
+
+    Extends: Phaser.Scene,
+
+    initialize:
+
+        function endScene() {
+            Phaser.Scene.call(this, { key: 'winScene' });
+        },
+
+    preload: function () {
+    },
+
+    create: function () {
+        this.add.text(360, 150, `YOU WON!`);
+        this.add.text(300, 500, `Click to play again`);
+
+        this.input.once('pointerdown', function () {
+            this.cameras.main.fade(250);
+            this.cameras.main.on('camerafadeoutcomplete', function (camera, effect) {
+                this.scene.start('gameScene');
+            }, this);
+
+        }, this);
+
+    },
+    update: function (time, delta) {
+
+    }
+
+
+});
+
 let config = {
     type: Phaser.AUTO,
     width: 800,
     height: 600,
     backgroundColor: '#000000',
     parent: 'phaser-example',
-    scene: [titleScene, gameScene, endScene],
+    scene: [titleScene, gameScene, endScene, winScene],
     physics: {
         default: 'arcade',
         arcade: {
