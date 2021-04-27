@@ -19,21 +19,23 @@ let titleScene = new Phaser.Class({
         this.decor = this.add.image(400, 323, 'decor');
         this.add.image(400, 100, 'title');
         this.add.text(320, 150, `Wander The Shadows`);
-        this.add.text(340, 500, `Click to Start`);
+        this.add.text(315, 500, `Press Space to Start`);
 
         this.decor.setScale(0.315);
 
-        this.input.once('pointerdown', function () {
+        spaceKeyObj = this.input.keyboard.addKey('SPACE');
+        this.spacePressed = false;
+    },
+    update: function (time, delta) {
+        this.decor.rotation += 0.005;
+
+        if (spaceKeyObj.isDown && !this.spacePressed) {
+            this.spacePressed = true;
             this.cameras.main.fade(250);
             this.cameras.main.on('camerafadeoutcomplete', function (camera, effect) {
                 this.scene.start('gameScene');
             }, this);
-
-        }, this);
-
-    },
-    update: function (time, delta) {
-        this.decor.rotation += 0.005;
+        }
     }
 });
 
@@ -64,38 +66,17 @@ let gameScene = new Phaser.Class({
 
         // Generate Random Numbers
         const numberOfPlatforms = getRandomInt(15) + 10;
-        const randomOne = getRandomInt(500) + getRandomInt(150);
-        const randomTwo = getRandomInt(150) + getRandomInt(75);
-        const randomThree = getRandomInt(500) + getRandomInt(150);
-        const randomFour = getRandomInt(200) + getRandomInt(75);
 
-        // Orbs
-        this.orbs = this.physics.add.staticGroup(this.orbsCreator((numberOfPlatforms), randomOne, randomTwo));
-        this.orbsMed = this.physics.add.staticGroup(this.orbsCreator((numberOfPlatforms), randomTwo, randomThree, 0.6));
-        this.orbsLarge = this.physics.add.staticGroup(this.orbsCreator((numberOfPlatforms), randomThree, randomFour, 0.75));
+        // Orbs // Declare A Static Group
+        this.orbs = this.physics.add.staticGroup();
 
-        this.platforms = this.physics.add.staticGroup(this.platformCreator());
-        this.secondPlatforms = this.physics.add.staticGroup(this.platformHighCreator(numberOfPlatforms, randomOne, randomTwo));
-        this.thirdPlatforms = this.physics.add.staticGroup(this.platformHighCreator(numberOfPlatforms, randomTwo, randomThree));
-        this.fourthPlatforms = this.physics.add.staticGroup(this.platformHighCreator(numberOfPlatforms, randomThree, randomFour));
-
-        this.winningOrb = this.physics.add.staticGroup(this.winningOrbsCreator(1, (randomThree * numberOfPlatforms), (randomFour * numberOfPlatforms), 1.5));
+        // Platforms // Declare A Static Group
+        this.platforms = this.physics.add.staticGroup();
+        this.platformCreator(numberOfPlatforms); // Platforms Generation
 
         Phaser.Actions.Call(this.platforms.getChildren(), platform => {
             platform.setPipeline('Light2D');
             platform.refreshBody();
-        }, this);
-
-        Phaser.Actions.Call(this.secondPlatforms.getChildren(), platform => {
-            platform.setPipeline('Light2D');
-        }, this);
-
-        Phaser.Actions.Call(this.thirdPlatforms.getChildren(), platform => {
-            platform.setPipeline('Light2D');
-        }, this);
-
-        Phaser.Actions.Call(this.fourthPlatforms.getChildren(), platform => {
-            platform.setPipeline('Light2D');
         }, this);
 
         Phaser.Actions.Call(this.orbs.getChildren(), orb => {
@@ -103,93 +84,36 @@ let gameScene = new Phaser.Class({
             orb.refreshBody();
         }, this);
 
-        Phaser.Actions.Call(this.orbsMed.getChildren(), orb => {
-            orb.setPipeline('Light2D');
-            orb.refreshBody();
-        }, this);
-
-
-        Phaser.Actions.Call(this.orbsLarge.getChildren(), orb => {
-            orb.setPipeline('Light2D');
-            orb.refreshBody();
-        }, this);
-
-        Phaser.Actions.Call(this.winningOrb.getChildren(), orb => {
-            orb.setPipeline('Light2D');
-            orb.refreshBody();
-        }, this);
-
     },
 
     platformCreator: function (numberOfPlatforms) {
-        return {
-            key: 'platform',
-            repeat: numberOfPlatforms, // Number of platforms
-            setXY: {
-                x: 0, // Starting Point
-                y: 500,
-                stepX: 850, // Offset direction
-                stepY: 0
-            },
-            setScale: {
-                x: 5,
-                y: 1
-            }
-        };
-    },
+        const getRandomInt = (max) => {
+            return Math.floor(Math.random() * Math.floor(max));
+        }
 
-    platformHighCreator: function (numberOfPlatforms, randomOne, randomTwo) {
-        return {
-            key: 'platform',
-            repeat: numberOfPlatforms, // Number of platforms
-            setXY: {
-                x: 500, // Starting Point
-                y: 500,
-                stepX: randomOne, // Offset direction
-                stepY: -randomTwo
-            },
-            setScale: {
-                x: 1,
-                y: 1
-            }
-        };
-    },
+        // Main Starting Platform
+        this.platforms.create(0, 500, 'platform').setScale(5, 1);
 
-    orbsCreator: function (numberOfOrbs, randomOne, randomTwo, size = 0.5) {
-        return {
-            key: 'orb',
-            repeat: numberOfOrbs, // Number of platforms
-            setXY: {
-                x: 500, // Starting Point
-                y: 450,
-                stepX: randomOne, // Offset direction
-                stepY: -randomTwo
-            },
-            setScale: {
-                x: size,
-                y: size
-            }
-        };
-    },
+        // Previous platform variables
+        let posX = 0, posY = 500;
 
-    winningOrbsCreator: function (numberOfOrbs = 1, x, y, size = 0.5) {
-        console.log(x, y)
-        return {
-            key: 'orb',
-            repeat: numberOfOrbs, // Number of platforms
-            setXY: {
-                x: x, // Starting Point
-                y: -y,
-                stepX: 0, // Offset direction
-                stepY: 0
-            },
-            setScale: {
-                x: size,
-                y: size
-            }
-        };
-    },
+        // Generator
+        for (let i = 0; i < numberOfPlatforms; i++) {
+            console.log(`Platform #${i} generated at ${posX} ${posY}`)
+            posX = posX + getRandomInt(128) + 64;
+            posY = posY - getRandomInt(128) - 64;
+            this.platforms.create(posX, posY, 'platform');
+            this.platforms.create(-posX, posY, 'platform');
 
+            this.orbs.create(posX, posY - 32, 'orb').setScale(0.5);
+            this.orbs.create(posX + 32, posY - 32, 'orb').setScale(0.5);
+            this.orbs.create(posX - 32, posY - 32, 'orb').setScale(0.5);
+
+            this.orbs.create(-posX, posY - 32, 'orb').setScale(0.5);
+            this.orbs.create(-posX + 32, posY - 32, 'orb').setScale(0.5);
+            this.orbs.create(-posX - 32, posY - 32, 'orb').setScale(0.5);
+        }
+    },
 
     create: function () {
         // Player Create
@@ -216,10 +140,9 @@ let gameScene = new Phaser.Class({
         // Generate Level
         this.generateLevel();
 
+        // Add Colliders
         this.physics.add.collider(this.player, this.platforms);
-        this.physics.add.collider(this.player, this.secondPlatforms);
-        this.physics.add.collider(this.player, this.thirdPlatforms);
-        this.physics.add.collider(this.player, this.fourthPlatforms);
+
 
         text = this.add.text(32, 32, '', { font: '12px Courier', fill: '#00ff00' });
 
@@ -251,38 +174,6 @@ let gameScene = new Phaser.Class({
                 this.insight += 1;
                 this.score += 5;
                 orb.destroy();
-            }
-
-        }, this);
-
-        Phaser.Actions.Call(this.orbsMed.getChildren(), orb => {
-
-            let orbRect = orb.getBounds();
-            if (Phaser.Geom.Intersects.RectangleToRectangle(playerRect, orbRect)) {
-                this.insight += 5;
-                this.score += 25;
-                orb.destroy();
-            }
-
-        }, this);
-
-        Phaser.Actions.Call(this.orbsLarge.getChildren(), orb => {
-
-            let orbRect = orb.getBounds();
-            if (Phaser.Geom.Intersects.RectangleToRectangle(playerRect, orbRect)) {
-                this.insight += 10;
-                this.score += 50;
-                orb.destroy();
-            }
-
-        }, this);
-
-        Phaser.Actions.Call(this.winningOrb.getChildren(), orb => {
-
-            let orbRect = orb.getBounds();
-            if (Phaser.Geom.Intersects.RectangleToRectangle(playerRect, orbRect)) {
-                orb.destroy();
-                this.endGame();
             }
 
         }, this);
@@ -365,7 +256,6 @@ let gameScene = new Phaser.Class({
 
     setTimer: function () {
         timeNumber++;
-        console.log(`Timer: ${timeNumber}`);
     },
 
     move: function (direction) {
@@ -426,22 +316,20 @@ let endScene = new Phaser.Class({
 
     create: function () {
         this.add.text(360, 150, `GAME OVER`);
-        this.add.text(320, 500, `Click to try again`);
+        this.add.text(300, 500, `Press Space to try again`);
 
-        this.input.once('pointerdown', function () {
+        spaceKeyObj = this.input.keyboard.addKey('SPACE');
+        this.spacePressed = false;
+    },
+    update: function (time, delta) {
+        if (spaceKeyObj.isDown && !this.spacePressed) {
+            this.spacePressed = true;
             this.cameras.main.fade(250);
             this.cameras.main.on('camerafadeoutcomplete', function (camera, effect) {
                 this.scene.start('gameScene');
             }, this);
-
-        }, this);
-
-    },
-    update: function (time, delta) {
-
+        }
     }
-
-
 });
 
 let winScene = new Phaser.Class({
@@ -459,19 +347,19 @@ let winScene = new Phaser.Class({
 
     create: function () {
         this.add.text(360, 150, `YOU WON!`);
-        this.add.text(300, 500, `Click to play again`);
+        this.add.text(300, 500, `Press Space to try again`);
 
-        this.input.once('pointerdown', function () {
+        spaceKeyObj = this.input.keyboard.addKey('SPACE');
+        this.spacePressed = false;
+    },
+    update: function (time, delta) {
+        if (spaceKeyObj.isDown && !this.spacePressed) {
+            this.spacePressed = true;
             this.cameras.main.fade(250);
             this.cameras.main.on('camerafadeoutcomplete', function (camera, effect) {
                 this.scene.start('gameScene');
             }, this);
-
-        }, this);
-
-    },
-    update: function (time, delta) {
-
+        }
     }
 
 

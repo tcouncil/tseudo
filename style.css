@@ -36,7 +36,7 @@ article{
 }
 
 canvas{
-    width: 60%;
+    min-height: 96vh;
 }
 
 hr.stylized {
