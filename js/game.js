@@ -64,8 +64,11 @@ let gameScene = new Phaser.Class({
             return Math.floor(Math.random() * Math.floor(max));
         }
 
+        // Constant Variables
+        const basePlatformAmount = 10;
+
         // Generate Random Numbers
-        const numberOfPlatforms = getRandomInt(15) + 10;
+        const numberOfPlatforms = getRandomInt(15) + basePlatformAmount;
 
         // Orbs // Declare A Static Group
         this.orbs = this.physics.add.staticGroup();
@@ -94,24 +97,50 @@ let gameScene = new Phaser.Class({
         // Main Starting Platform
         this.platforms.create(0, 500, 'platform').setScale(5, 1);
 
+        // Minimum Distance between platforms 
+        const minX = 96, minY = 96;
+
         // Previous platform variables
         let posX = 0, posY = 500;
 
         // Generator
         for (let i = 0; i < numberOfPlatforms; i++) {
-            console.log(`Platform #${i} generated at ${posX} ${posY}`)
-            posX = posX + getRandomInt(128) + 64;
-            posY = posY - getRandomInt(128) - 64;
+            // New position
+            posX = posX + getRandomInt(96) + minX;
+            posY = posY - getRandomInt(96) - minY;
+
+            const bool1 = getRandomInt(2) === 1 ? true : false;
+            const bool2 = getRandomInt(2) === 1 ? true : false;
+            const bool3 = getRandomInt(2) === 1 ? true : false;
+            console.log(`${bool1} ${bool2} ${bool3}`);
+
+            //console.log(`Platform #${i} generated at ${posX} ${posY}`);
+
+            // Right side of the level
             this.platforms.create(posX, posY, 'platform');
+
+            // Creates set of 3 orbs on the platform
+            if (bool1) {
+                if (bool3)
+                    this.orbs.create(posX, posY - 32, 'orb').setScale(0.5);
+                if (bool2) {
+                    this.orbs.create(posX + 32, posY - 32, 'orb').setScale(0.5);
+                    this.orbs.create(posX - 32, posY - 32, 'orb').setScale(0.5);
+                }
+            }
+
+            // Left side of the level
             this.platforms.create(-posX, posY, 'platform');
 
-            this.orbs.create(posX, posY - 32, 'orb').setScale(0.5);
-            this.orbs.create(posX + 32, posY - 32, 'orb').setScale(0.5);
-            this.orbs.create(posX - 32, posY - 32, 'orb').setScale(0.5);
-
-            this.orbs.create(-posX, posY - 32, 'orb').setScale(0.5);
-            this.orbs.create(-posX + 32, posY - 32, 'orb').setScale(0.5);
-            this.orbs.create(-posX - 32, posY - 32, 'orb').setScale(0.5);
+            // Creates set of 3 orbs on the platform
+            if (!bool1) {
+                if (!bool3)
+                    this.orbs.create(-posX, posY - 32, 'orb').setScale(0.5);
+                if (!bool2) {
+                    this.orbs.create(-posX + 32, posY - 32, 'orb').setScale(0.5);
+                    this.orbs.create(-posX - 32, posY - 32, 'orb').setScale(0.5);
+                }
+            }
         }
     },
 
