@@ -54,9 +54,12 @@ let gameScene = new Phaser.Class({
     preload: function () {
         this.load.image('bg', 'images/titleScreen.png');
         this.load.image('title', 'images/title.png');
-        this.load.image('player', 'images/sprites/player_still_crossarmed.png');
+        //this.load.image('player', 'images/sprites/player_still_crossarmed.png');
         this.load.image('platform', 'images/sprites/platform.png');
-        this.load.image('orb', 'images/sprites/insight.png');
+        //this.load.image('orb', 'images/sprites/insight.png');
+
+        this.load.spritesheet('player', 'images/sprites/player.png', { frameWidth: 16, frameHeight: 16 });
+        this.load.spritesheet('orb', 'images/sprites/insight.png', { frameWidth: 16, frameHeight: 16 });
     },
 
     generateLevel: function () {
@@ -65,17 +68,19 @@ let gameScene = new Phaser.Class({
         }
 
         // Constant Variables
-        const basePlatformAmount = 10;
+        const basePlatformAmount = 3;
 
         // Generate Random Numbers
-        const numberOfPlatforms = getRandomInt(15) + basePlatformAmount;
+        const numberOfPlatforms = getRandomInt(5) + basePlatformAmount;
+        const numberOfBranches = getRandomInt(3) + 2;
 
         // Orbs // Declare A Static Group
         this.orbs = this.physics.add.staticGroup();
 
         // Platforms // Declare A Static Group
         this.platforms = this.physics.add.staticGroup();
-        this.platformCreator(numberOfPlatforms); // Platforms Generation
+        this.platformCreator(numberOfPlatforms, numberOfBranches, 96, 500); // Platforms Generation
+        this.platformCreator(numberOfPlatforms, numberOfBranches, 96, 500, -1); // Platforms Generation
 
         Phaser.Actions.Call(this.platforms.getChildren(), platform => {
             platform.setPipeline('Light2D');
@@ -83,63 +88,88 @@ let gameScene = new Phaser.Class({
         }, this);
 
         Phaser.Actions.Call(this.orbs.getChildren(), orb => {
-            orb.setPipeline('Light2D');
+            orb.setScale(2);
+            //orb.setPipeline('Light2D');
+            orb.play('glow');
             orb.refreshBody();
         }, this);
 
     },
 
-    platformCreator: function (numberOfPlatforms) {
+    platformCreator: function (numberOfPlatforms = 1, branches = 0, posX = 0, posY = 500, direction = 1) {
         const getRandomInt = (max) => {
             return Math.floor(Math.random() * Math.floor(max));
         }
 
+        console.log(`Creating ${numberOfPlatforms * 2} platforms on brach #${branches}`)
+
         // Main Starting Platform
-        this.platforms.create(0, 500, 'platform').setScale(5, 1);
+        this.platforms.create(0, 500, 'platform').setScale(4, 1);
 
         // Minimum Distance between platforms 
-        const minX = 96, minY = 96;
-
-        // Previous platform variables
-        let posX = 0, posY = 500;
+        const minX = 256, minY = 96;
 
         // Generator
-        for (let i = 0; i < numberOfPlatforms; i++) {
+        for (let i = 1; i < numberOfPlatforms; i++) {
             // New position
-            posX = posX + getRandomInt(96) + minX;
-            posY = posY - getRandomInt(96) - minY;
+            posX = posX + minX;
+            posY = posY - minY * direction;
 
             const bool1 = getRandomInt(2) === 1 ? true : false;
             const bool2 = getRandomInt(2) === 1 ? true : false;
             const bool3 = getRandomInt(2) === 1 ? true : false;
-            console.log(`${bool1} ${bool2} ${bool3}`);
 
-            //console.log(`Platform #${i} generated at ${posX} ${posY}`);
+            // Base Case
+            if (i === numberOfPlatforms - 1 && branches < 1)
+                return;
 
             // Right side of the level
-            this.platforms.create(posX, posY, 'platform');
+            if (getRandomInt(2) === 1)
+                this.platforms.create(posX, posY, 'platform').setScale(3, 1);
 
-            // Creates set of 3 orbs on the platform
+            // Creates 3 sets of 3 orbs on the platform
             if (bool1) {
-                if (bool3)
-                    this.orbs.create(posX, posY - 32, 'orb').setScale(0.5);
-                if (bool2) {
-                    this.orbs.create(posX + 32, posY - 32, 'orb').setScale(0.5);
-                    this.orbs.create(posX - 32, posY - 32, 'orb').setScale(0.5);
-                }
+                this.orbs.create(posX, posY - 32, 'orb').setScale(0.5);
+                this.orbs.create(posX + 32, posY - 32, 'orb').setScale(0.5);
+                this.orbs.create(posX - 32, posY - 32, 'orb').setScale(0.5);
+            }
+            if (bool2) {
+                this.orbs.create(posX + 128, posY - 32, 'orb').setScale(0.5);
+                this.orbs.create(posX + 160, posY - 32, 'orb').setScale(0.5);
+                this.orbs.create(posX + 96, posY - 32, 'orb').setScale(0.5);
+            }
+            if (bool3) {
+                this.orbs.create(posX - 128, posY - 32, 'orb').setScale(0.5);
+                this.orbs.create(posX - 160, posY - 32, 'orb').setScale(0.5);
+                this.orbs.create(posX - 96, posY - 32, 'orb').setScale(0.5);
             }
 
             // Left side of the level
-            this.platforms.create(-posX, posY, 'platform');
+            if (getRandomInt(2) === 1)
+                this.platforms.create(-posX, posY, 'platform').setScale(3, 1);
 
-            // Creates set of 3 orbs on the platform
+            // Creates 3 sets of 3 orbs on the platform
             if (!bool1) {
-                if (!bool3)
-                    this.orbs.create(-posX, posY - 32, 'orb').setScale(0.5);
-                if (!bool2) {
-                    this.orbs.create(-posX + 32, posY - 32, 'orb').setScale(0.5);
-                    this.orbs.create(-posX - 32, posY - 32, 'orb').setScale(0.5);
-                }
+                this.orbs.create(-posX, posY - 32, 'orb').setScale(0.5);
+                this.orbs.create(-posX + 32, posY - 32, 'orb').setScale(0.5);
+                this.orbs.create(-posX - 32, posY - 32, 'orb').setScale(0.5);
+            }
+            if (!bool2) {
+                this.orbs.create(-posX + 128, posY - 32, 'orb').setScale(0.5);
+                this.orbs.create(-posX + 160, posY - 32, 'orb').setScale(0.5);
+                this.orbs.create(-posX + 96, posY - 32, 'orb').setScale(0.5);
+            }
+            if (!bool3) {
+                this.orbs.create(-posX - 128, posY - 32, 'orb').setScale(0.5);
+                this.orbs.create(-posX - 160, posY - 32, 'orb').setScale(0.5);
+                this.orbs.create(-posX - 96, posY - 32, 'orb').setScale(0.5);
+            }
+
+            // Recursive Case
+            if (i === numberOfPlatforms - 1) {
+                console.log('Finished', branches)
+                this.platformCreator(numberOfPlatforms / 3 + 3, branches - 1, posX, posY, direction);
+                this.platformCreator(numberOfPlatforms / 3 + 3, branches - 1, -posX, posY, direction);
             }
         }
     },
@@ -150,10 +180,51 @@ let gameScene = new Phaser.Class({
         this.player.setBounce(0.05);
         this.player.setPipeline('Light2D');
 
+        // Animation set
+        this.anims.create({
+            key: 'idle',
+            frames: this.anims.generateFrameNumbers('player', { frames: [0, 1, 2, 3] }),
+            frameRate: 8,
+            repeat: -1
+        });
+        // Animation set
+        this.anims.create({
+            key: 'jump',
+            frames: this.anims.generateFrameNumbers('player', { frames: [4, 5, 6, 7] }),
+            frameRate: 8,
+            repeat: 0
+        });
+
+        // Animation set
+        this.anims.create({
+            key: 'fall',
+            frames: this.anims.generateFrameNumbers('player', { frames: [14, 15] }),
+            frameRate: 8,
+            repeat: -1
+        });
+        // Animation set
+        this.anims.create({
+            key: 'walk',
+            frames: this.anims.generateFrameNumbers('player', { frames: [8, 9, 10, 11, 12, 13] }),
+            frameRate: 8,
+            repeat: -1
+        });
+
+        // Animation set
+        this.anims.create({
+            key: 'glow',
+            frames: this.anims.generateFrameNumbers('orb', { frames: [0, 1, 2, 3] }),
+            frameRate: 8,
+            repeat: -1
+        });
+
+        this.player.play('idle');
+        this.player.setScale(4)
+
         // Player variables
         this.alive = true;
         this.speed = 350;
-        this.jumpHeight = 550;
+        this.jumpHeight = 250;
         this.direction = 'STANDING';
         this.inAir = false;
         this.jumpReleased = true;
@@ -163,8 +234,8 @@ let gameScene = new Phaser.Class({
         timeNumber = 0;
 
         // Light
-        this.playerLight = this.lights.addLight(0, 0, 250).setIntensity(2);
-        this.lights.enable().setAmbientColor(0x000000);
+        this.playerLight = this.lights.addLight(200, 0, 0).setIntensity(1);
+        this.lights.enable();
 
         // Generate Level
         this.generateLevel();
@@ -208,7 +279,7 @@ let gameScene = new Phaser.Class({
         }, this);
 
 
-        if (this.player.y > 850) {
+        if (this.player.y > 2000) {
             this.gameOver();
         }
 
@@ -216,13 +287,15 @@ let gameScene = new Phaser.Class({
 
     playerHandler: function () {
         // Left
-        if (cursors.left.isDown || aKeyObj.isDown) {
+        if ((cursors.left.isDown || aKeyObj.isDown) && this.direction !== 'LEFT') {
             this.direction = 'LEFT';
+            this.player.play('walk');
         }
 
         // Right
-        if (cursors.right.isDown || dKeyObj.isDown) {
+        if ((cursors.right.isDown || dKeyObj.isDown) && this.direction !== 'RIGHT') {
             this.direction = 'RIGHT';
+            this.player.play('walk');
         }
 
         // Jump
@@ -235,8 +308,19 @@ let gameScene = new Phaser.Class({
 
         // In Air Handler
         if (this.player.body.touching.down) {
+            if (this.direction === 'STANDING' && this.inAir)
+                this.player.play('idle');
+            else
+                if (this.inAir)
+                    this.player.play('walk')
+
             this.inAir = false;
+
         } else {
+            if (this.direction === 'STANDING' && !this.inAir)
+                this.player.play('fall');
+
+            this.player.play('fall');
             this.inAir = true;
         }
 
@@ -247,6 +331,8 @@ let gameScene = new Phaser.Class({
 
         // Standing in place or jumping in place
         if (((cursors.right.isUp && cursors.left.isUp) && (aKeyObj.isUp && dKeyObj.isUp)) || ((cursors.right.isDown && cursors.left.isDown) || (aKeyObj.isDown && dKeyObj.isDown))) {
+            if (this.direction !== 'STANDING' && !this.inAir)
+                this.player.play('idle');
             this.direction = "STANDING";
         }
 
@@ -276,9 +362,10 @@ let gameScene = new Phaser.Class({
         ]).setScrollFactor(0);
 
         if (this.alive) {
-            this.level = Math.ceil(this.insight / 50);
-            this.playerLight.setRadius(200 + (50 * this.level)).setIntensity(1 + this.level);
+            this.level = Math.ceil(this.insight / 10);
+            this.playerLight.setRadius(200 + (50 * this.level)).setIntensity(Math.ceil(this.insight / 10) / 50 + 0.2);
             this.speed = 340 + (this.level * 10);
+            this.jumpHeight = Math.ceil(this.insight / 3) + 400 + this.insight;
         }
 
     },
@@ -303,6 +390,7 @@ let gameScene = new Phaser.Class({
 
     jump: function () {
         this.player.body.setVelocityY(-this.jumpHeight);
+        this.player.play('jump');
     },
 
     gameOver: function () {
@@ -401,6 +489,7 @@ let config = {
     backgroundColor: '#000000',
     parent: 'phaser-example',
     scene: [titleScene, gameScene, endScene, winScene],
+    pixelArt: true,
     physics: {
         default: 'arcade',
         arcade: {
