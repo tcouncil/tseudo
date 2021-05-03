@@ -68,17 +68,29 @@ let gameScene = new Phaser.Class({
         }
 
         // Constant Variables
-        const basePlatformAmount = 3;
+        const basePlatformAmount = 5;
 
         // Generate Random Numbers
         const numberOfPlatforms = getRandomInt(5) + basePlatformAmount;
-        const numberOfBranches = getRandomInt(3) + 2;
+        const numberOfBranches = getRandomInt(5) + 2;
+
+
 
         // Orbs // Declare A Static Group
         this.orbs = this.physics.add.staticGroup();
 
         // Platforms // Declare A Static Group
         this.platforms = this.physics.add.staticGroup();
+
+        // Main Starting Platform
+        this.platforms.create(0, 500, 'platform').setScale(4, 1);
+
+        // Main Save Platform
+        this.platforms.create(0, 4500, 'platform').setScale(4, 1);
+        this.platformCreator(numberOfPlatforms, getRandomInt(2), 0, 4400);
+        this.platformCreator(numberOfPlatforms, getRandomInt(2), 1000, 4400);
+        this.platformCreator(numberOfPlatforms, getRandomInt(2), -1000, 4400);
+
         this.platformCreator(numberOfPlatforms, numberOfBranches, 96, 500); // Platforms Generation
         this.platformCreator(numberOfPlatforms, numberOfBranches, 96, 500, -1); // Platforms Generation
 
@@ -103,11 +115,8 @@ let gameScene = new Phaser.Class({
 
         console.log(`Creating ${numberOfPlatforms * 2} platforms on brach #${branches}`)
 
-        // Main Starting Platform
-        this.platforms.create(0, 500, 'platform').setScale(4, 1);
-
         // Minimum Distance between platforms 
-        const minX = 256, minY = 96;
+        const minX = 256, minY = direction === 1 ? 128 + (10 * branches) : 128;
 
         // Generator
         for (let i = 1; i < numberOfPlatforms; i++) {
@@ -279,7 +288,7 @@ let gameScene = new Phaser.Class({
         }, this);
 
 
-        if (this.player.y > 2000) {
+        if (this.player.y > 5000) {
             this.gameOver();
         }
 
@@ -352,20 +361,29 @@ let gameScene = new Phaser.Class({
         this.data.set('insight', this.insight);
         this.data.set('score', this.score);
         this.data.set('time', timeNumber);
+        this.data.set('jumpHeight', this.jumpHeight);
+        this.data.set('light', (this.insight / 10) / 50 + 0.444);
+        this.data.set('speed', this.speed);
+        this.data.set('scale', (this.level / 10));
 
 
         text.setText([
             'Level: ' + this.data.get('level'),
             'Insight: ' + this.data.get('insight'),
             'Score: ' + this.data.get('score'),
-            'Timer: ' + this.data.get('time')
+            'Timer: ' + this.data.get('time'),
+            'Jump Height: ' + this.data.get('jumpHeight'),
+            'Sight: ' + this.data.get('light'),
+            'Speed: ' + this.data.get('speed'),
+            'Scale: + ' + this.data.get('scale')
         ]).setScrollFactor(0);
 
         if (this.alive) {
             this.level = Math.ceil(this.insight / 10);
-            this.playerLight.setRadius(200 + (50 * this.level)).setIntensity(Math.ceil(this.insight / 10) / 50 + 0.2);
+            this.playerLight.setRadius(200 + (50 * this.level)).setIntensity((this.insight / 10) / 50 + 0.444);
             this.speed = 340 + (this.level * 10);
             this.jumpHeight = Math.ceil(this.insight / 3) + 400 + this.insight;
+            this.player.setScale(4 + (this.level / 10));
         }
 
     },
